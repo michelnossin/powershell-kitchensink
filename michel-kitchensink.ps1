@@ -1,5 +1,5 @@
 <#
-Michel's powershell kitchensink
+Michel's powershell kitchensink v2.0
 Use Windows 10 Pro/Enterprise's Powershell ISE env, or Visual Studop Code with Powershell plugin.
 #>
 
