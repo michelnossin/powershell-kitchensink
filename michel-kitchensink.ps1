@@ -243,6 +243,65 @@ $examResults | Sort-Object {
         'N/A'  { 3 } 
     } 
 }, Mark -Descending 
+#Group and count
+6, 7, 7, 8, 8, 8 | Group-Object
+6, 7, 7, 8, 8, 8 | Group-Object -NoElement  #key is count, name is value
+Get-ChildItem C:\Windows\Assembly -Filter *.dll -Recurse | 
+    Group-Object Name  #Count files per filemame
+Get-ChildItem C:\Windows\Assembly -Filter *.dll -Recurse |
+    Group-Object Name -NoElement |
+    Where-Object Count -gt 1 |
+    Sort-Object Count, Name -Descending |
+    Select-Object Name, Count -First 5  #Top 5
+Get-ChildItem C:\Windows\Assembly -Filter *.dll -Recurse |
+    Group-Object Name, Length -NoElement |
+    Where-Object Count -gt 1 |
+    Sort-Object Name -Descending |
+    Select-Object Name, Count -First 6  #Group by name and file
+'one@one.example', 'two@one.example', 'three@two.example' |
+    Group-Object { ($_ -split '@')[1] }  #Group by on demand fields , the domain in this case
+$hashtable = 'one', 'two', 'two' | Group-Object -AsHashtable -AsString
+$hashtable['one']  #output put in hashtable, default case insensitive
+1, 5, 9, 79 | Measure-Object  #stats like count, 4 in this case
+1, 5, 9, 79 | Measure-Object -Average -Maximum -Minimum -Sum
+Get-Process | Measure-Object WorkingSet -Average  #Property Workinset only
+Get-Content C:\Windows\WindowsUpdate.log | Measure-Object -Line -Word -Character #File stats
+Compare-Object -ReferenceObject 1, 2, 3, 4 -DifferenceObject 1, 2 #inequal only
+Compare-Object -ReferenceObject 1, 2, 3, 4 -DifferenceObject 1, 2 -IncludeEqual
+#passthru will pass the objects passing the criteriainstead of difference table
+Compare-Object -ReferenceObject 1, 2, 3, 4 -DifferenceObject 1, 2 -ExcludeDifferent -IncludeEqual -PassThru
+#compare files in 2 directories:
+$reference = Get-ChildItem C:\Windows\System32 -File 
+$difference = Get-ChildItem C:\Windows\SysWOW64 -File 
+Compare-Object $reference $difference -Property Name, Length -IncludeEqual -ExcludeDifferent
+#export (to csv)
+Get-Process | Export-Csv processes.csv
+Get-Process powershell | Select-Object Name, Id | Export-Csv .\Processes.csv
+Get-Process explorer | Select-Object Name,Id | Export-Csv .\Processes.csv -Append
+Get-Process | Export-Csv processes.csv -NoTypeInformation #no header
+Get-Process powershell | Select-Object Name, Id | ConvertTo-Csv #just print std outpyut
+#to convert array, first convert to string:
+[PSCustomObject]@{
+    Name = "Numbers"
+    Value = 1, 2, 3, 4, 5
+} | ForEach-Object {
+    $_.Value = $_.Value -join ', '
+    $_
+} | ConvertTo-Csv -NoTypeInformation
+#import tsv or csv
+Import-Csv TabDelimitedFile.tsv -Delimiter `t
+#Sort , prevent string sort by casting the ccolumn to int e.g.
+Import-Csv .\positions.csv | Sort-Object { [Int]$_.Position }
+#to get input from std input:
+"powershell,404" | ConvertFrom-Csv -Header Name, Id
+#to create xml file:
+[PSCustomObject]@{ 
+    Number  = 1 
+    Decimal = 2.3 
+    String  = 'Hello world' 
+} | Export-Clixml .\object.xml 
+$object = Import-Clixml .\object.xml
+$object.Decimal.GetType()  #inspect type of column named Decimal
 
 #Get-ADUser -Filter { sAMAccountName -eq "SomeName" }
 #Get-Service -Filter { Status -eq 'Stopped' }
