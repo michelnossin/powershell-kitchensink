@@ -147,11 +147,105 @@ Get-PSDrive
 Set-Location C:\
 Get-ChildItem -File
 
+#modules
+New-Module -Name TestModule -ScriptBlock { 
+    function Get-Number { return 1 } 
+} 
+Get-Number
+Get-Module -ListAvailable
+Import-Module -Name PSWorkflow 
+Import-Module -Name C:\Windows\System32\WindowsPowerShell\v1.0\Modules\PSWorkflow\PSWorkflow.psd1 
+#automatic import when using command
+Get-Module PSDesiredStateConfiguration  #not set
+Get-DscResource
+Get-Module PSDesiredStateConfiguration   #set
+Get-Command -Module PSWorkflow #sfter import dhow commands works
+#Remove-Module   will remove module
+Find-Module Azure*
+Find-Module posh-git  | Install-Module  
+#Save-Module  downloads module but does not install
+Get-PSSnapIn -Registered   #snap-in was used before modules were introduced
 
+
+#objects
+#st and non-std output , pipelines
+$stdout = Get-CimInstance Win32_ComputerSystem
+$stdout = Get-CimInstance Win32_ComputerSystem -Verbose  #Write-Warning , Write-Information ,Verbose are non-default output streams
+Get-Process | Where-Object WorkingSet -gt 50MB  #pipe by passing an object, filtering the workingset memory property
+#members , these are properties and methods
+Get-Process -Id $PID | Get-Member
+Get-Process -Id $PID | Get-Member -MemberType Property #notice get,or set for read and or write privs
+#Access the property
+$process = Get-Process -Id $PID 
+$process.Name
+(Get-Process -Id $PID).Name 
+(Get-Process -Id $PID).StartTime.DayOfWeek  #Property of property object (datetime)
+#Custom property with space in name:
+$object = [PSCustomObject]@{ 'Some Name' = 'Value' } 
+$object."Some Name" 
+$object.'Some Name' 
+$object.{Some Name}
+#Access method
+$date = Get-Date "01/01/2010"
+$date.ToLongDateString()
+#Add new memeber
+$empty = New-Object Object
+$empty | Add-Member -Name New -Value 'Hello world' -MemberType NoteProperty
+$empty.new
+#enumerate, list and filter
+$drives = Get-PSDrive
+$drives #list , not extra steps required
+Get-Process | ForEach-Object { 
+    Write-Host $_.Name -ForegroundColor Green 
+}
+Get-Process | Where-Object StartTime -gt (Get-Date 16:00:00)
+#select certain members/properties, and sort
+Get-Process | Select-Object -Property Name, Id
+Get-Process | Select-Object -Property Name, *Memory
+Get-Process | Select-Object -Property * -Exclude *Memory*
+Get-ChildItem C:\ -Recurse | Select-Object -First 2
+Get-ChildItem C:\ | Select-Object -Last 3
+Get-ChildItem C:\ | Select-Object -Skip 4 -First 1
+Get-ChildItem C:\ | Select-Object -ExpandProperty FullName
+1, 1, 1, 3, 5, 2, 2, 4 | Select-Object -Unique
+(1..3 + 1..3) | ForEach-Object { [PSCustomObject]@{ Number = $_ } }
+(1..3 + 1..3) | ForEach-Object { [PSCustomObject]@{ Number = $_ } } | 
+ Select-Object -Property * -Unique
+ Get-Process -Id $PID | Get-Member -MemberType PropertySet
+#create new
+Get-Process | Select-Object -Property Name, Id, 
+    @{Name='FileOwner'; Expression={ (Get-Acl $_.Path).Owner }}
+#sort
+5, 4, 3, 2, 1 | Sort-Object
+Get-Process | Sort-Object -Property Id
+Get-ChildItem C:\Windows\System32 | 
+    Sort-Object LastWriteTime, Name
+#custom object sort
+$examResults = @(
+    [PSCustomObject]@{ Exam = 'Music'; Result = 'N/A'; Mark = 0 }
+    [PSCustomObject]@{ Exam = 'History'; Result = 'Fail'; Mark = 23 }
+    [PSCustomObject]@{ Exam = 'Biology'; Result = 'Pass'; Mark = 78 }
+    [PSCustomObject]@{ Exam = 'Physics'; Result = 'Pass'; Mark = 86 }
+    [PSCustomObject]@{ Exam = 'Maths'; Result = 'Pass'; Mark = 92 }
+    )
+    $examResults | Sort-Object {
+    switch ($_.Result) {
+    'Pass' { 1 }
+    'Fail' { 2 }
+    'N/A' { 3 }
+    }
+    }
+#custom sort descend
+$examResults | Sort-Object { 
+    switch ($_.Result) { 
+        'Pass' { 1 } 
+        'Fail' { 2 } 
+        'N/A'  { 3 } 
+    } 
+}, Mark -Descending 
 
 #Get-ADUser -Filter { sAMAccountName -eq "SomeName" }
 #Get-Service -Filter { Status -eq 'Stopped' }
 
-#Switch arguments
 Get-ChildItem -Recurse:$true  #This is a switch argument
 ls -Recurse:$true | grep sprint
