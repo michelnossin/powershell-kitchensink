@@ -303,6 +303,173 @@ Import-Csv .\positions.csv | Sort-Object { [Int]$_.Position }
 $object = Import-Clixml .\object.xml
 $object.Decimal.GetType()  #inspect type of column named Decimal
 
+#Operators
+@(1, 2) + 3  #add to array
+'hello'  + ' ' + 'world' 
+3 + 4
+@(1, 2) + @(3, 4)  #array + array
+@{key1 = 1} + @{key2 = 2}   #join hashtable
+'hello' * 3 
+3 % 2  #modulus in this case 1
+4 / 6
+78 -shl 1  #Shift left each bit
+#assignments
+$host.UI.RawUI.WindowTitle = 'PowerShell window' 
+$i = 1 
+$i += 20
+$hashtable = @{key1 = 1} 
+$hashtable += @{key2 = 2} 
+$i = 2 
+$i *= 2 
+$variable = 2 
+$variable /= 2
+$variable = 10 
+$variable %= 3
+#comparison
+'Trees' -ceq 'trees'   #Case sensitive
+'Trees' -ieq 'trees' 
+1, 2, 3, 4 -ge 3    #greater then
+'one', 'two', 'three' -like '*e*'  #one and three
+$array = 1, 2 
+if ($array -eq $null) { Write-Host 'Variable not set' }  #$nul compare
+20 -ne 100 
+'this' -ne 'that' 
+$false -ne 'false'
+'The cow jumped over the moon' -like '*moon*' 
+'Hello world' -like '??llo w*' 
+'' -like '*' 
+'' -notlike '?*' 
+1 -ge 1        # Returns true 
+2 -gt 1        # Returns true 
+1.4 -lt 1.9    # Returns true 
+1.1 -le 1.1    # Returns true 
+'bears' -gt 'Bears'    # False, they are equal to one another 
+'bears' -clt 'Bears'   # True, b before B 
+1, 2 -contains 2       # Returns true 
+1, 2, 3 -contains 4    # Returns false 
+1 -in 1, 2, 3    # Returns true 
+4 -in 1, 2, 3    # Returns false 
+4 -notin 5  #true
+
+#Regular expressions
+'The cow jumped over the moon' -match 'cow'  # Returns true 
+'The       cow' -match 'The +cow'            # Returns true  , + means 1 or more space
+'1234567689' -match '[0-4]*'   #0 or more 0 till 4
+$matches  #shows what is matched 1234
+'Group one, Group two' -match 'Group (.*), Group (.*)' #Capture groups
+$matches #all groups
+$matches[1]  #or just specific one group
+$matches.1
+#replace is like match but replace match
+'abababab' -replace 'a', 'c'
+'value1,value2,value3' -replace '(.*),(.*),(.*)', '$3,$2,$1' 
+$1 = $2 = $3 = 'Oops'
+Write-Host ('value1,value2,value3' -replace '(.*),(.*),(.*)', '$3,$2,$1') -ForegroundColor Green
+#Using double quotes does not work
+Write-Host ('value1,value2,value3' -replace '(.*),(.*),(.*)', "$3,$2,$1") -ForegroundColor Red
+#Split uses regex to split array into entries
+'a1b2c3d4' -split '[0-9]' 
+
+#binary operators band bor, bnot , bxor
+
+#logical operators
+$true -and $true 
+1 -lt 2 -and "string" -like 's*' 
+1 -eq 1 -and 2 -eq 2 -and 3 -eq 3 
+(Test-Path C:\Windows) -and (Test-Path 'C:\Program Files') 
+$true -or $true 
+2 -gt 1 -or "something" -ne "nothing" 
+1 -eq 1 -or 2 -eq 1 
+(Test-Path C:\Windows) -or (Test-Path D:\Windows)
+#exclusive or, left OR right true not both:
+$true -xor $false 
+1 -le 2 -xor 1 -eq 2 
+(Test-Path C:\Windows) -xor (Test-Path D:\Windows) 
+#not
+-not $false 
+-not (Test-Path X:\) 
+-not ($true -and $false) 
+!($true -and $false) 
+
+#type operators
+#as to convert type
+"1" -as [Int32] 
+'String' -as [Type]
+#is and isnot to test type
+'string' -is [String] 
+1 -is [Int32] 
+[String] -is [Type] 
+123 -isnot [String] 
+
+#redirect
+Get-Process -Id $pid > process.txt
+Get-Content process.txt 
+$i = 1 
+function Test-Redirect{ 
+    Write-Warning "Warning $i" 
+} 
+Test-Redirect 3> 'warnings.txt'   # Overwrite 
+$i++ 
+Test-Redirect 3>> 'warnings.txt'  # Append 
+#or split streams based on error or warnings:
+function Test-Redirect{ 
+    'This is standard out' 
+           
+    Write-Error 'This is an error' 
+    Write-Warning 'This is a warning' 
+} 
+Test-Redirect 3> 'warnings.txt' 2> 'errors.txt' 
+#or all redirect
+$verbosePreference = 'continue' 
+function Test-Redirect{ 
+    'This is standard out' 
+ 
+    Write-Information 'This is information' 
+    Write-Host 'This is information as well' 
+    Write-Error 'This is an error' 
+    Write-Verbose 'This is verbose' 
+    Write-Warning 'This is a warning' 
+} 
+Test-Redirect *> 'alloutput.txt' 
+#redirect to standard our
+function Test-Redirect{
+    'This is standard out'
+
+    Write-Information 'This is information'
+}
+
+$stdOut = Test-Redirect 6>&1
+$stdOut
+#Drop unwanted
+Get-Process > $null
+
+#Other operators
+$command = 'ipconfig' 
+& $command 
+$scriptBlock = { Write-Host 'Hello world' } 
+& $scriptBlock 
+#create array using , operator
+$array = ,1
+#format a string using -f
+'1: {0}, 2: {1}, 3: {2}' -f 1, 2, 3 
+'The pass mark is {0:P}' -f 0.8 
+'The price is {0:C2}' -f 199 
+#increment/decrement ++ and --
+for ($i = 0; $i -le 15; $i++) { 
+    Write-Host $i -ForegroundColor $i
+ } 
+#2nd example
+$array = 1..5 
+$i = 0 
+do { 
+    # $i is incremented before use, 2 will be the first printed. 
+    Write-Host $array[++$i]
+ } while ($i -lt $array.Count -1) 
+ #join array
+ "a,b,c,d" -split ',' -join "`t"
+
+
+
 #Get-ADUser -Filter { sAMAccountName -eq "SomeName" }
 #Get-Service -Filter { Status -eq 'Stopped' }
 
