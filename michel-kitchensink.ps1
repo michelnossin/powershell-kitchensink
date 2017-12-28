@@ -468,6 +468,254 @@ do {
  #join array
  "a,b,c,d" -split ',' -join "`t"
 
+#Variable , array hashtables
+${My Variable}  = 4  #complex names
+$myvar = 5
+${C:\Windows\Temp\variable.txt} = "New value"  #store on FS
+Get-Content C:\Windows\Temp\variable.txt
+$i = $j = 0
+#commands variables
+Clear-Variable i
+Get-Variable | Select-Object Name, Description
+New-Variable -Name today -Value (Get-Date) -Option Constant
+#is same as $today = Get-Date
+$psProcesses = Get-Process powershell 
+Remove-Variable psProcesses 
+$objectCount = 23 
+Set-Variable objectCount -Value 42 -Description 'The number of objects in the queue' -Option Private
+#scopes
+#$local:var or $gobal:var or $private:var 
+Remove-Variable thisValue -ErrorAction SilentlyContinue 
+# This is still "local" scope 
+$private:thisValue = "Some value" 
+"From global: $global:thisValue"           # Accessible 
+function Test-ThisScope { 
+    "Without scope: $thisValue"            # Not accessible
+     "From private: $private:thisValue"     # Not accessible 
+    "From global: $global:thisValue"       # Not accessible 
+} 
+Test-ThisScope 
+#script scope , share between children but not global
+# Script file: example.ps1 
+[Version]$Script:Version = "0.1" 
+function Get-Version { 
+    Write-Host "Version: $Version" 
+} 
+function Set-Version { 
+    param( 
+        [Version]$version 
+    ) 
+    $Script:Version = $version 
+} 
+Set-Version 0.2 
+Write-Host (Get-Version) 
+#type and type conversion
+[String](Get-Date)
+[DateTime]"01/01/2016"
+[Int]$thisNumber = 2
+[String]$thisString = "some value"
+#This type conversion add this attribute to variable
+(Get-Variable thisString).Attributes 
+$thisString = $null
+#This attribute is now still there
+#object assignment
+$object1 = $object2 = [PSCustomObject]@{ 
+    Name = 'First object'
+ }
+$object1.Name = 'New name'
+Write-Host $object2.Name
+#NEsted objects:
+$complexObject = [PSCustomObject]@{
+    OuterNumber = 1
+    InnerObject = [PSCustomObject]@{
+         InnerNumber = 2
+    }
+}
+$innerObject = $complexObject.InnerObject
+$innerObject.InnerNumber = 5
+Write-Host $complexObject.InnerObject.InnerNumber
+#arrays
+$processes = Get-Process 
+$myArray = @()  #empty
+$myGreetings = "Hello world", "Hello sun", "Hello moon"
+$myGreetings = @("Hello world", "Hello sun", "Hello moon")
+$myThings = "Hello world", 2, 34.23, (Get-Date)  #different types
+$myArray = New-Object Object[] 10        # 10 objects 
+$byteArray = New-Object Byte[] 100       # 100 bytes 
+$ipAddresses = New-Object IPAddress[] 5  # 5 IP addresses 
+[String[]]      # An array of strings 
+[UInt64[]]      # An array of unsigned 64-bit integers 
+[Xml[]]         # An array of XML documents
+[Int32[]]$myNumbers = 1, 2, $null, 3.45  #1,2,0,3
+$myArray = @() 
+$myArray += "New value"
+$myArray = $myArray + "New value" #alternative
+$firstArray = 1, 2, 3 
+$secondArray = 4, 5, 6 
+$mergedArray = $firstArray + $secondArray
+#select from array
+$myArray = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 
+$myArray[0] 
+$myArray[1]
+$myArray[-1]   #Get last item
+$myArray[-2] 
+#ranges
+$myArray[2..4] 
+$myArray[-1..-5]
+$myArray[0..2 + 6..8 + -1]  #multiple ranges
+#change elements
+$myArray = 1, 2, 9, 4, 5 
+$myArray[2] = 3
+#remove elements
+$myArray = 1, 2, 3, 4, 5 
+$myArray[1] = $null 
+$myArray 
+#count
+$myArray.Count 
+#loop through elements
+$myArray | ForEach-Object { Write-Host $_ }
+$myArray | Where-Object { $_ } | ForEach-Object { Write-Host $_ } #remove null values
+#remove element
+$newArray = $oldArray[0..48] + $oldArray[50..99]
+#or use copy to remove
+$newArray = New-Object Object[] ($oldArray.Count - 1) 
+# Before the index 
+[Array]::Copy($oldArray,    # Source 
+              $newArray,    # Destination 
+              49)           # Number of elements to copy 
+# After the index 
+[Array]::Copy($oldArray,    # Source 
+              50,           # Copy from index of Source 
+              $newArray,    # Destination 
+              49,           # Copy to index of Destination 
+              50)           # Number of elements to copy
+#for loop to remove
+$newArray = for ($i = 0; $i -lt $oldArray.Count; $i++) { 
+    if ($i -ne 49) { 
+        $oldArray[$i] 
+    } 
+}
+#remove values
+$oldArray = 1..100
+$newArray = $oldArray | Where-Object { $_ -ne 50 } 
+$index = $oldArray.IndexOf(50)
+$index = $oldArray.IndexOf(50) 
+if ($index -gt -1) { 
+    $newArray = $oldArray[0..($index - 1)] +  
+        $oldArray[($index + 1)..99] 
+} 
+#clear array
+$newArray = 1, 2, 3, 4, 5 
+$newArray.Clear()
+#arrays to values
+$firstName, $lastName = "First Last" -split " " 
+$firstName, $lastName = "First Last".Split(" ")
+$i, $j, $k = 1, 2, 3, 4, 5 #k gets 3,4,5
+$i, $j, $k = 1, 2  #k is null
+#multi array
+$arrayOfArrays = @( 
+    @(1, 2, 3), 
+    @(4, 5, 6), 
+    @(7, 8, 9) 
+)
+$arrayOfArrays[0][1]
+#jagged array, different inner sizes
+$arrayOfArrays = @( 
+    @(1,  2), 
+    @(4,  5,  6,  7,  8,  9), 
+    @(10, 11, 12) 
+)
+#hashtables
+$hashtable = @{}  #empty
+$hashtable = @{Key1 = "Value1"; Key2 = "Value2"}
+$hashtable.Add("Key1", "Value1")
+$hashtable = @{} 
+if (-not $hashtable.Contains("Key1")) { 
+    $hashtable.Add("Key1", "Value1") 
+} 
+#or update
+$hashtable = @{ Existing = "Old" } 
+$hashtable["New"] = "New"            # Add this 
+$hashtable["Existing"] = "Updated"   # Update this
+#or update with .
+$hashtable = @{ Existing = "Old" } 
+$hashtable.New = "New"               # Add this 
+$hashtable.Existing = "Updated"      # Update this 
+#get keys and values
+$hashtable.Keys
+$hashtable.Values
+#remove
+$hashtable.Remove("Existing")
+$hashtable = @{one = 1; two = 2; three = 3} 
+$hashtable.Clear()
+#list , dicts,queues , stacks
+$list = New-Object System.Collections.Generic.List[String] 
+$arrayList = New-object System.Collections.ArrayList
+$list.Add("David")
+$list.Insert(0, "Sarah") 
+$list.Insert(2, "Jane") 
+#select
+$list = New-Object System.Collections.Generic.List[String] 
+$list.AddRange([String[]]("Tom", "Richard", "Harry")) 
+$list[1]    # Returns Richard
+$index = $list.FindIndex( { $args[0] -eq 'Richard' } )
+$list.IndexOf('Harry', 2)    # Start at index 2 
+$list.IndexOf('Richard', 1, 2)    # Start at index 1, and 2 elements
+#remove
+$list = New-Object System.Collections.Generic.List[String] 
+$list.AddRange([String[]]("Tom", "Richard", "Harry", "David")) 
+$list.RemoveAt(1)          # By Richard by index 
+$list.Remove("Richard")    # By Richard by value
+$list.RemoveAll( { $args[0] -eq "David" } )
+#change
+$list = New-Object System.Collections.Generic.List[Int]
+ $list.AddRange([Int[]](1, 2, 2, 4)) 
+$list[2] = 3
+#dict
+$dictionary = New-Object System.Collections.Generic.Dictionary"[String,IPAddress]" 
+$dictionary = New-Object "System.Collections.Generic.Dictionary[String,IPAddress]"
+$dictionary.Add("Computer1", "192.168.10.222")
+if (-not $dictionary.ContainsKey("Computer2")) { 
+    $dictionary.Add("Computer2", "192.168.10.13") 
+} 
+#select
+$dictionary["Computer1"]    # Key reference 
+$dictionary.Computer1       # Dot-notation
+$dictionary.Keys 
+$dictionary.Values
+foreach ($key in $dictionary.Keys) { 
+    Write-Host "Key: $key    Value: $($dictionary[$key])" 
+} 
+#remoce
+$dictionary.Remove("Computer1")
+#queue fifo
+$queue = New-Object System.Collections.Generic.Queue[String]
+$queue.ToArray()
+$queue.Peek()  #next element without removing it
+#add get
+$queue.Enqueue("Tom") 
+$queue.Enqueue("Richard") 
+$queue.Enqueue("Harry") 
+$queue.Dequeue()    # This returns Tom.
+#stacks lilo
+$stack = New-Object System.Collections.Generi
+$stack.ToArray()
+$stack.Peek() 
+$stack.Push("Up the road") 
+$stack.Push("Over the gate") 
+$stack.Push("Under the bridge") 
+$stack.Push("Up the road") 
+$stack.Push("Over the gate") 
+$stack.Pop()
+
+
+
+
+
+
+
+
+
 
 
 #Get-ADUser -Filter { sAMAccountName -eq "SomeName" }
