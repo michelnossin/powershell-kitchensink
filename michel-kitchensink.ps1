@@ -686,7 +686,7 @@ $dictionary.Values
 foreach ($key in $dictionary.Keys) { 
     Write-Host "Key: $key    Value: $($dictionary[$key])" 
 } 
-#remoce
+#remove
 $dictionary.Remove("Computer1")
 #queue fifo
 $queue = New-Object System.Collections.Generic.Queue[String]
@@ -708,13 +708,120 @@ $stack.Push("Up the road")
 $stack.Push("Over the gate") 
 $stack.Pop()
 
+#Branch and loop
+$x = 1
+if ($x -eq 1) { 
+    $x = 2
+}
+else {
+    $x = 3
+}
+#stacked
+if ($x -eq 1) { 
+    $x = 2
+}
+elseif ($x -eq 2) {
+    $x = 3
+}
+elseif ($x -eq 3) {
+    $x = 4
+}
+switch (1, 2) { 
+    1 { Write-Host 'Equals 1'; break } 
+    2 { Write-Host 'Equals 2' } 
+    default { Write-Host 'No match'}
+} 
+#wildcard allows ? and *
+switch -Wildcard ('cat') {
+    'c*'  { Write-Host 'The word begins with c' } 
+   '???' { Write-Host 'The word is 3 characters long' } 
+   '*t'  { Write-Host 'The word ends with t' } 
+} 
+#regex allows regular expression comparison
+switch -Regex ('cat') {
+    '^c'       { Write-Host 'The word begins with c' } 
+   '[a-z]{3}' { Write-Host 'The word is 3 characters long' } 
+   't$'       { Write-Host 'The word ends with t' } 
+} 
+#Compare using Script blocks
+switch (Get-Date) {
+    { $_ -is [DateTime] } { Write-Host 'This is a DateTime type' } 
+   { $_.Year -ge 2017 }  { Write-Host 'It is 2017 or later' } 
+} 
+#loop array
+foreach ($process in Get-Process) { 
+    Write-Host $process.Name 
+}   
+#For loop gives more control
+$processes = Get-Process 
+for ($i = 0; $i -lt $processes.Count; $i++) { 
+    Write-Host $processes[$i].Name
+ }
+ #reverse the list
+for ($i = $processes.Count - 1; $i -ge 0; $i--) { 
+    Write-Host $processes[$i].Name
+ } 
+#execute once and continue if expression is still met
+do { 
+    Write-Host "Waiting for boot" 
+    Start-Sleep -Seconds 5 
+} until (Test-Connection 'SomeComputer' -Quiet -Count 1) 
+#While will first test condition
+while (-not (Test-Path $env:TEMP\test.txt -PathType Leaf)) { 
+    Start-Sleep -Seconds 10 
+} 
+#break breaks the loop
+for ($i = 0; $i -lt 20; $i += 2) {
+    Write-Host $i 
+   if ($i -eq 10) {
+        break    # Stop this loop 
+   } 
+} 
+#Use continue to continue the loop
+for ($i = 0; $i -le 5; $i++) { 
+    Write-Host $i 
+    if ($i -lt 2) { 
+        continue    # Continue to the next iteration 
+    } 
+    Write-Host "Remainder when $i is divided by 2 is $($i % 2)" 
+} 
 
 
 
+#.net , powershell is build on .net
+#assemblies, classes in dll
+[System.AppDomain]::CurrentDomain.GetAssemblies()
+#To get info about assembly use 1 of the following
+[System.Management.Automation.PowerShell].Assembly
+[System.Management.Automation.PSCredential].Assembly 
+[System.Management.Automation.PSObject].Assembly
+#Namespaces like system.Appdomain, or Appdomain for short are to structure
+[Management.Automation.PowerShell].Assembly #eg
+#types = Classes
+#create new
+$stringBuilder = [System.Text.StringBuilder]::new()
+$stringBuilder = New-Object System.Text.StringBuilder  #Alternative
+#or with parameters:
+New-Object System.Text.StringBuilder(10) 
+[System.Text.StringBuilder]::new(10)
+#lets skip the rest, but this example is nice , to show you can
+#do a lot on Windows using its .net
+# Load the the Windows Presentation Framework 
+using assembly PresentationFramework 
+# Use the System.Windows namespace 
+using namespace System.Windows 
+$window = New-Object Window 
+$window.Height = 100 
+$window.Width = 150 
+# Create a System.Windows.Controls.Button object 
+$button = New-Object Controls.Button 
+$button.Content = 'Close' 
+$button.Add_Click( { $window.Close() } ) 
+$window.Content = $button 
+$window.ShowDialog()
 
 
-
-
+#data parsing and manipulation
 
 
 
