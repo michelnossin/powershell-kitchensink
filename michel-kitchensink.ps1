@@ -822,7 +822,155 @@ $window.ShowDialog()
 
 
 #data parsing and manipulation
-
+#string = array
+$myString = 'abcdefghijklmnopqrstuvwxyz' 
+$myString[0]     # This is a (the first character in the string) 
+$myString[-1]    # This is z (the last character in the string)
+#Soem string methods can be executed on array
+('azzz', 'bzzz', 'czzz').Trim('z') 
+('a,b', 'c,d').Split(',') 
+#common methods
+$myString = 'abcdefghijklmnopqrstuvwxyz' 
+$myString.Substring(3, 4) # Start at index 3, get 4 characters. 
+$string = 'Surname,,GivenName' 
+$array = $string.Split(',') 
+$array.Count    # This is 3 
+$array[1]       # This is empty 
+$string = 'Surname,,GivenName' 
+$array = $string.Split(',', [StringSplitOptions]::RemoveEmptyEntries) 
+$array.Count    # This is 2
+#Fill different vars from the string
+$surname, $givenName = $string.Split(',', [StringSplitOptions]::RemoveEmptyEntries)
+#create array of 1 char strings
+[char[]]$characters = [string[]]('a', 'b', 'c') 
+[char[]]$characters = 'abc'
+#replace
+$string = 'This is the first example' 
+$string.Replace('first', 'second')
+$string = 'Begin the begin.' 
+$string -replace 'begin.', 'story, please.' 
+$string.Replace('begin.', 'story, please.') 
+#trim
+$string = " 
+    This string has leading and trailing white space      " 
+$string.Trim()
+$string = '*__This string is surrounded by clutter.--#' 
+$string.Trim('*_-#')
+$string = 'magnet.uk.net' 
+$string.TrimEnd('.uk.net')
+#insert / remove
+$string = 'The letter of the alphabet is a' 
+$string.Insert(4, 'first ')  # Insert this before "letter", include a trailing space
+$string = 'This is is an example' 
+$string.Remove(4, 3)
+#indexof 
+$string = 'abcdefedcba' 
+$string.IndexOf('b')     # Returns 1 
+$string.LastIndexOf('b') # Returns 9 
+$string.IndexOf('ed')    # Returns 6
+$string  = 'abcdef' 
+if ($string.IndexOf('a') -gt -1) {
+     'The string contains an a' 
+}
+#padleft, padright
+('one', 'two', 'three').PadRight(10, '.')
+('one', 'two', 'three').PadLeft(10, '.')
+#toupper, tolower
+'aBc'.ToUpper()    # Returns ABC 
+'AbC'.ToLower()    # Returns abc 
+#Contains , startwith , endswith
+$string = 'I am the subject' 
+$string.Contains('the')    # Returns $true
+$string = 'abc' 
+$string.StartsWith('ab') 
+$string.EndsWith('bc') 
+#chaining
+'    ONe*?   '.Trim().TrimEnd('?*').ToLower().Replace('o', 'O') 
+#convert
+Get-Process -Id $pid | Select-Object Name, Id, Path | ConvertTo-Csv
+'David,0123456789,28,"1 Some street, 
+A Lane"' | ConvertFrom-Csv -Header Name, Phone, Age, Address | 
+Format-Table -Wrap 
+'Name,Age', 'David,28' | ConvertFrom-Csv 
+Get-Process -Id $pid | Select-Object Name, Id, Path | Export-Csv 'somefile.csv' 
+Import-Csv somefile.csv
+'Michael Caine', 'Benny Hill', 'Raf Vallone' | Convert-String -Example 'First Second=FSecond' 
+'Michael Caine', 'Benny Hill', 'Raf Vallone' | Convert-String -Example @{ 
+    Before = 'First Second' 
+    After = 'FSecond' 
+} 
+'"bob",tim,geoff' | ConvertFrom-String -Delimiter ',' -PropertyNames name1, name2, name3
+$template = '{Task*:{ImageName:System Idle Process} {[Int]PID:0} {SessionName:Services} {Session:0} {Memory:24 K}}' 
+tasklist |  
+    Select-Object -Skip 3 | 
+    ConvertFrom-String -TemplateContent $template | 
+    Select-Object -ExpandProperty Task 
+#Number manipulation
+'{0:F} TB available' -f (123156235234522 / 1TB) 
+22.5GB
+2e2    # Returns 200 (2 * 102) 
+2e-1   # Returns 0.2 (2 * 10-1) 
+0x5eb4  #hex
+#Math
+[Math]::Round(2.123456789, 2) 
+[Math]::Ceiling(2.1234)    # Returns 3 
+[Math]::Floor(2.9876)      # Returns 2 
+[Math]::Abs(-45748) 
+[Math]::Pow(2, 8) # Returns 256 (28) 
+[Math]::Sqrt(9)    # Returns 3 
+[Math]::pi    # π, 3.14159265358979 
+[Math]::e     # e, 2.71828182845905 
+#Strings to numbers
+[Int]"2"             # String to Int32 
+[Decimal]"3.141"     # String to Decimal 
+[UInt32]10           # Int32 to UInt32 
+[SByte]-5            # Int32 to SByte 
+[Convert]::ToInt32('01000111110101', 2)  # Returns 4597 from binary
+[Convert]::ToInt32('FF9241', 16)  # Returns 16749121  from hex
+#date time
+$string = "11/10/2000"    # 11th October 2000 
+[DateTime]$string         # 10th November 2000
+#This might not work
+function Test-DateTime { 
+    param( 
+        [DateTime]$Date 
+    ) 
+    $Date 
+} 
+Test-DateTime -Date "11/10/2000" 
+#to fix
+Test-DateTime -Date (Get-Date "11/10/2000") 
+#parse date using parseexact 
+$string = '20170102-2030'  # Represents 1st February 2017, 20:30 
+[DateTime]::ParseExact($string, 'yyyyddMM-HHmm', (Get-Culture)) 
+#change date
+(Get-Date) + (New-Timespan -Hours 6) 
+(Get-Date).Date
+(Get-Date).AddDays(1) # One day from now 
+(Get-Date).AddDays(-1) # One day before now
+(Get-Date).AddTicks(1) 
+(Get-Date).AddMilliseconds(1) 
+(Get-Date).AddSeconds(1) 
+(Get-Date).AddMinutes(1) 
+(Get-Date).AddHours(1) 
+(Get-Date).AddMonths(1) 
+(Get-Date).AddYears(1)
+#utc
+(Get-Date).ToUniversalTime()
+$UtcDate = New-Object DateTime ((Get-Date).Ticks, 'Utc')
+#date to string
+Get-Date -Format 'dd/MM/yyyy HH:mm' 
+(Get-Date).ToString('dd/MM/yyyy HH:mm') 
+#icw chaining
+(Get-Date).ToUniversalTime().Date.AddDays(-7).ToString('dd/MM/yyyy HH:mm')
+#to store use unamigious formnat like universal
+(Get-Date).ToUniversalTime().ToString('u')
+#compare dates
+$date1 = (Get-Date).AddDays(-20) 
+$date2 = (Get-Date).AddDays(1) 
+$date2 -gt $date1 
+(Get-Date "13/01/2017") -gt "12/01/2017"  #wrong (us UK format)
+(Get-Date "13/01/2017") -gt "01/12/2017" #correct
 
 
 #Get-ADUser -Filter { sAMAccountName -eq "SomeName" }
