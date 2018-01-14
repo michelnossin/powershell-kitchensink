@@ -1217,9 +1217,15 @@ $result.CatalogItems.Keys | Where-Object {
 #what files are modified / changed
 $result.PathItems.Keys | Where-Object { 
     $result.CatalogItems[$_] -ne $result.PathItems[$_]}
-    
 
+#Html, xml and json
+#lets skip this
 
+#rest and soap , lets skip
+
+#remote management skipping
+
+#Testing , yes lets do this
 
 
 #Get-ADUser -Filter { sAMAccountName -eq "SomeName" }
