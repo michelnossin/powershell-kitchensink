@@ -3,6 +3,10 @@ Michel's powershell kitchensink v2.0
 Use Windows 10 Pro/Enterprise's Powershell ISE env, or Visual Studop Code with Powershell plugin.
 #>
 
+#Visual studio code keys:
+#ctrl-shift-p : open command terminal
+# F8 : Run current selection
+
 #History
 Get-History
 
@@ -971,6 +975,121 @@ $date2 = (Get-Date).AddDays(1)
 $date2 -gt $date1 
 (Get-Date "13/01/2017") -gt "12/01/2017"  #wrong (us UK format)
 (Get-Date "13/01/2017") -gt "01/12/2017" #correct
+
+#regular expressions
+#basic
+#litercal
+'a' -match 'a'
+#any single
+'a' -match '.'
+#zero or more
+'abc' -match 'a*'
+'abc' -match '.*'
+# 1 or more
+'abc' -match 'a+'
+'abc' -match '.+'
+#escape special meaning
+'*' -match '\*'
+'\' -match '\\'
+'Domain\User' -replace '.+\\'  # Everything up to and including \ 
+#optional
+'abc' -match 'ab?c'
+'ac' -match 'ab?c'  #b not required
+#fixed nr chars
+'abbbc' -match 'ab{3}c'
+#range of nr chars
+'abc' -match 'ab{1,3}c'
+'abbc' -match 'ab{1,3}c'
+'abbbc' -match 'ab{1,3}c'
+#min nr of chars
+'abbc' -match 'ab{2,}c'
+'abbbbbc' -match 'ab{2,}c'
+#anchors
+#begin or end of string
+'aba' -match '^a'  
+'cbc' -match 'c$'
+$env:PATH -split ';' | Where-Object { $_ -match '^C' }
+#word boundary
+'Band and Land' -match '\band\b'
+#character class , 1 of the mentioned charaters
+'get' -match 'g[aeiou]t' #true
+'one-two_three,four' -split '[-_,]'
+#negated class
+'Ba%by8 a12315tthe1231 k#.,154eyboard' -replace '[^a-z ]'
+#shorthands class : \d [0-9] \s [\t\r\n\f] \w [A-Za-z0-9_]
+#ranges
+'23rd place' -match '[0-9]+'   # $matches[0] is "23"
+'The registry value is 0xAF9B7' -match '0x[0-9a-f]+'; $matches[0]
+(ipconfig) -match 'IPv4 Address.+: *[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'
+#alternation (or )
+'one', 'two', 'three' | Where-Object { $_ -match 'one|three' }
+'one', 'one hundred', 'three', 'eighty three' |
+Where-Object { $_ -match '^one|three$' }
+#restricting alternation
+Get-ChildItem -Recurse -File |  
+    Where-Object { $_.Name -match '(pwd|pass(word|wd)?).*\.(txt|doc)$' }  
+#case sensitive match
+'The registry value is 0xAF9B7' -cmatch '0x[0-9a-fA-F]+'
+#repeated groups
+([0-9]+\.){3}[0-9]+
+'v1', 'Ver 1.000.232.14', 'Version: 0.92', 'Version-7.92.1-alpha' |
+    Where-Object { $_ -match '[0-9]+(\.[0-9]+)*' } | 
+    ForEach-Object { $matches[0] }
+#debug regex
+https://www.debuggex.com/
+#to show th resulting match:
+"michel matches" -match "michel" ; $matches
+'aaabc' -match 'a+'# Returns true, matches 'aaa' 
+#quantifiers
+'C:\long\path\to\some\files' -match '.*\\'; $matches[0]
+#example too greedy quantifier
+#should be like this
+$html = '<table><tr><td>Value1</td><td>Value2</td></tr></table>'
+$html -match '<td>[^>]+</td>'; $matches[0] 
+#capturing values
+'first second third' -match '(first) (second) (third)'; $matches
+#capturing groups, and create object from result
+'first second third' -match '(?<One>first) (?<Two>second) (?<Three>third)'; $matches
+if ('first second third' -match '(first) (second) (third)') { 
+    [PSCustomObject]@{ 
+        One   = $matches[1] 
+        Two   = $matches[2] 
+        Three = $matches[3] 
+    } 
+} 
+#alternative remove 0 match (whole string) first
+if ('first second third' -match '(?<One>first) (?<Two>second) (?<Three>third)') {
+    $matches.Remove(0)
+    [PSCustomObject]$matches
+}
+#non capture group:
+'first second third' -match '(?<One>first) (?<Two>second) (?:third)'; $matches
+#examples
+#mac address
+$patterns = '^([0-9a-f]{2}[-:]){5}[0-9a-f]{2}$', 
+            '^(([0-9a-f]{2}[-:]?){2}[-:.]){2}([0-9a-f]{2}[-:]?){2}$', 
+            '^([0-9a-f]{2}[-:]){5}[0-9a-f]{2}|([0-9a-f]{4}\.){2}[0-9a-f]{4}$' 
+$strings = '1a-2b-3c-4d-5f-6d', 
+           '1a:2b:3c:4d:5f:6d', 
+           '1c2b.3c4d.5f6d' 
+foreach ($pattern in $patterns) { 
+    Write-Host "Testing pattern: $pattern" -ForegroundColor Cyan 
+    foreach ($string in $strings) { 
+        if ($string -match $pattern) { 
+            Write-Host "${string}: Matches" -ForegroundColor Green 
+        } else { 
+            Write-Host "${string}: Failed" -ForegroundColor Red 
+        } 
+    } 
+}
+#netstat
+$regex = '^\s*(?<Protocol>\S+)\s+(?<LocalAddress>\S+)\s+(?<ForeignAddress>\S+)\s+(?<State>\S+)\s+(?<PID>\d+)$'
+netstat -ano | Where-Object { $_ -match $regex } | ForEach-Object {
+    $matches.Remove(0)
+    [PSCustomObject]$matches
+} | Select-Object Protocol, LocalAddress, ForeignAddress, State, PID |
+    Format-Table
+
 
 
 #Get-ADUser -Filter { sAMAccountName -eq "SomeName" }
