@@ -1091,6 +1091,136 @@ netstat -ano | Where-Object { $_ -match $regex } | ForEach-Object {
     Format-Table
 
 
+#files and folders
+$PWD  #current dir
+#cd alias of Set-Location
+cd .. ; $PWD ; 
+cd git ; $PWD
+ls  #or dir or Get-Item
+ls -force  #use force if hidden dirs exists
+#create network drive
+New-PSDrive X -PSProvider FileSystem -Root \\Server\Share 
+New-PSDrive HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT
+#items
+#test id dir or file exists
+Test-Path HKLM:\Software\Publisher
+Test-Path C:\Windows -PathType Container 
+Test-Path C:\Windows\System32\cmd.exe -PathType Leaf
+#create dir or file
+New-Item $env:Temp\newfile.txt -ItemType File 
+New-Item $env:Temp\newdirectory -ItemType Directory 
+New-Item HKLM:\Software\NewKey -ItemType Key
+#remove
+$file = [System.IO.Path]::GetTempFileName()
+Set-Content -Path $file -Value 'Temporary: 10' 
+Remove-Item $file
+#invoke / open dir or file
+Invoke-Item .   # Open the current directory in explorer 
+Invoke-Item test.ps1   # Open test.ps1 in the default editor 
+Invoke-Item $env:windir\system32\cmd.exe    # Open cmd 
+Invoke-Item Cert:# Open the certificate store MMC for the current user
+#properties
+(Get-Item 'somefile.txt').IsReadOnly = $true #or chilitem
+#Enumeration for file properties
+[System.IO.FileAttributes]3 #readonly, hidden
+[System.IO.FileAttributes]'ReadOnly, Hidden' -eq 3
+#Set properties
+(Get-Item 'somefile.txt').Attributes = 'ReadOnly, Hidden'
+#or toggle
+$file = Get-Item 'somefile.txt' 
+$file.Attributes = $file.Attributes -bxor 'ReadOnly'
+#or add
+$file = Get-Item 'somefile.txt' 
+$file.Attributes = $file.Attributes -bor 'ReadOnly'
+#or use + , - as this is numeric
+$file = Get-Item 'somefile.txt'
+$file.Attributes = 'ReadOnly'
+$file.Attributes += 'ReadOnly'
+$file.Attributes
+#registry
+Get-ItemProperty -Path HKCU:\Environment 
+Get-ItemProperty -Path HKCU:\Environment -Name Path 
+Get-ItemProperty -Path HKCU:\Environment -Name Path, Temp
+Set-ItemProperty -Path HKCU:\Environment -Name NewValue -Value 'New' 
+Remove-ItemProperty -Path HKCU:\Environment -Name NewValue 
+#permissions
+#first create some crap
+New-Item C:\Temp\ACL -ItemType Directory -Force
+1..5 | ForEach-Object {
+New-Item C:\Temp\ACL\$_ -ItemType Directory -Force
+'content' | Out-File "C:\Temp\ACL\$_\$_.txt"
+New-Item C:\Temp\ACL\$_\$_ -ItemType Directory -Force
+'content' | Out-File "C:\Temp\ACL\$_\$_\$_.txt"
+}
+#read permissions
+Get-Acl C:\Temp\ACL\1 | Select-Object Owner
+Get-Acl C:\Temp\ACL\1 -Audit | Format-List 
+$acl = Get-Acl C:\Temp\ACL\3
+$acl.Access | Select-Object IdentityReference, FileSystemRights, IsInherited
+
+#write
+$acl = Get-Acl C:\Temp\ACL\1
+$acl.SetOwner(
+[System.Security.Principal.NTAccount]'Administrator'
+)
+Set-Acl C:\Temp\ACL\1 -AclObject $acl
+#rule protection (no inheritance)
+$acl = Get-Acl C:\Temp\ACL\2 
+$acl.SetAccessRuleProtection($true, $true) 
+Set-Acl C:\Temp\ACL\2 -AclObject $acl  
+#reenable
+$acl = Get-Acl C:\Temp\ACL\2 
+$acl.SetAccessRuleProtection($false, $false) 
+Set-Acl C:\Temp\ACL\2 -AclObject $acl
+#remove any rules
+$acl = Get-Acl C:\Temp\ACL\3     
+$acl.Access | 
+Where-Object { -not $_.IsInherited } | 
+    ForEach-Object{ $acl.RemoveAccessRuleSpecific($_) } 
+Set-Acl C:\Temp\ACL\3 -AclObject $acl
+#copy lists acl
+#template creation 
+$acl = Get-Acl C:\Temp\ACL\4 
+$acl.SetAccessRuleProtection($true, $true)
+$acl.Access |
+Where-Object IdentityReference -like '*\Authenticated Users' |
+ForEach-Object { $acl.RemoveAccessRule($_) }
+Set-Acl C:\Temp\ACL\4 –AclObject $acl
+#$copy template on top of new obj
+$acl = Get-Acl C:\Temp\ACL\4 
+Set-Acl C:\Temp\ACL\5 -AclObject $acl 
+#transactions (group of file changes)
+#create
+Start-Transaction 
+$path = 'HKCU:\TestTransaction' 
+New-Item $path -ItemType Key -UseTransaction 
+Set-ItemProperty $path -Name 'Name' -Value 'Transaction' -UseTransaction 
+Set-ItemProperty $path -Name 'Length' -Value 20 -UseTransaction 
+#finish or undo
+Undo-Transaction
+Complete-Transaction
+#check other transaction commands
+Get-Command -ParameterName UseTransaction
+#file catalog , check integrity of file
+#create
+New-FileCatalog -Path C:\Temp\ACL -CatalogFilePath C:\Temp\Security\example.cat
+Set-Content C:\Temp\ACL\3\3.txt –Value 'New content'
+#Test if some change has been done
+Test-FileCatalog -Path C:\Temp\ACL -CatalogFilePath C:\Temp\Security\example.cat
+#what file in acl dir was added
+$result = Test-FileCatalog -Path C:\Temp\ACL -CatalogFilePath C:\Temp\Security\example.cat -Detailed
+$result.PathItems.Keys | Where-Object { 
+    -not $result.CatalogItems.ContainsKey($_) }
+#what files were removed
+$result.CatalogItems.Keys | Where-Object {  
+    -not $result.PathItems.ContainsKey($_) }
+#what files are modified / changed
+$result.PathItems.Keys | Where-Object { 
+    $result.CatalogItems[$_] -ne $result.PathItems[$_]}
+    
+
+
+
 
 #Get-ADUser -Filter { sAMAccountName -eq "SomeName" }
 #Get-Service -Filter { Status -eq 'Stopped' }
