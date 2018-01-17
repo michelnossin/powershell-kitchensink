@@ -1226,6 +1226,312 @@ $result.PathItems.Keys | Where-Object {
 #remote management skipping
 
 #Testing , yes lets do this
+#static analyse, dont execute block 
+#command static test
+{ Write-Host 'content' }.Ast
+#Function static test
+function Write-Content { Write-Host 'content' } 
+(Get-Command Write-Content).ScriptBlock
+#Or 
+function Write-Content { Write-Host 'content' } 
+(Get-Item function:\Write-Content).ScriptBlock
+#proces output of test literally
+{ Write-Host 'content' }.Ast. 
+                         Endblock. 
+                         Statements. 
+                         PipelineElements. 
+                         CommandElements[1]
+#Or search output Ast
+{ Write-Host 'content' }.Ast.FindAll( { 
+    param ( $ast ) 
+
+    $ast -is [Management.Automation.Language.CommandAst] -and  
+$ast.GetCommandName() -eq 'Write-Host' 
+}, 
+$true 
+)
+#PSScriptAnalyzer (static ast evaluation)
+Install-Module PSScriptAnalyzer #admin
+#First create example code to test
+[CmdletBinding()] 
+param ( 
+    [Parameter(Mandatory = $true)] 
+    [String]$Password 
+) 
+ 
+$Credential = New-Object PSCredential( 
+    '.\user',  
+    $Password | ConvertTo-SecureString -AsPlainText -Force 
+) 
+$Credential.GetNetworkCredential().Password
+#Now invoke test
+Invoke-ScriptAnalyzer $psISE.CurrentFile.FullPath | Format-List
+#Some other code to tes
+function New-Message { 
+    [CmdletBinding()] 
+    param ( 
+        $Message 
+    ) 
+ 
+    [PSCustomObject]@{ 
+        Name  = 1 
+        Value = $Message 
+    } 
+} 
+#invoke test
+Invoke-ScriptAnalyzer $psISE.CurrentFile.FullPath | Format-List
+#Supress the error it gives by changing code
+function New-Message { 
+    [Diagnostics.CodeAnalysis.SuppressMessage('PSUseShouldProcessForStateChangingFunctions', '')] 
+    [CmdletBinding()] 
+    param ( 
+        $Message 
+    ) 
+ 
+    [PSCustomObject]@{ 
+        Name  = 1 
+        Value = $Message 
+    } 
+} 
+#unit testing , when code will execute
+#eg using Test Driven development
+#Pester for unit test: Debug and Refactor
+Install-Module Pester -Force
+#Create file: .tests.ps1
+Invoke-Pester .Invoke-Pester
+#what to test:
+#complex condition, input complex parameters
+#Exit condition errors, focus on 1 unit
+#not the function it calls.
+#Describe group of tests, declare it
+#example code:
+function Get-SquareRoot { 
+    param ( 
+        [Decimal]$Value 
+    ) 
+ 
+    if ($Value -lt 0) { throw 'Invalid value' } 
+ 
+    $result = $Value 
+    $previous = 0 
+    while ([Math]::Abs($result - $previous) -gt 1e-300) { 
+        $previous = $result 
+        $result = ($result + $Value / $previous) / 2 
+    } 
+    return $result 
+} 
+Get-SquareRoot 4
+#describe tests:
+Describe Get-SquareRoot { 
+    It 'Returns a square root of 0 for a value of 0' { 
+        Get-SquareRoot 0 | Should -Be 0 
+    } 
+
+    It 'Returns simple square root values' { 
+        Get-Squareroot 1 | Should -Be 1 
+        Get-SquareRoot 4 | Should -Be 2 
+        Get-SquareRoot 9 | Should -Be 3 
+        Get-SquareRoot 16 | Should -Be 4 
+    } 
+} 
+Describing Get-SquareRoot
+#test cases, repeating tests:
+$testCases = @( 
+    @{ Value = 1;  ExpectedResult = 1 } 
+    @{ Value = 4;  ExpectedResult = 2 } 
+    @{ Value = 9;  ExpectedResult = 33 } 
+    @{ Value = 16; ExpectedResult = 44 } 
+) 
+ 
+It 'Calculates the square root of <Value>to be<ExpectedResult>' -TestCases $testCases { 
+    param ( 
+        $Value, 
+        $ExpectedResult 
+    ) 
+ 
+    Get-SquareRoot $Value | Should -Be $ExpectedResult 
+} 
+#Or even use independent verification
+$values = 81, 9801, 60025, 3686400, 212255761, 475316482624 
+$testCases = foreach ($value in $values) { 
+    @{ Value = $value; ExpectedResult = [Math]::Sqrt($value) } 
+} 
+It 'Calculates the square root of <Value> to be <ExpectedResult>' -TestCases $testCases { 
+    param ( 
+        $Value, 
+        $ExpectedResult 
+    ) 
+    Get-SquareRoot $Value | Should -Be $ExpectedResult 
+} 
+#Test: 
+Describing Get-SquareRoot
+#Assertion:
+#be
+0 | Should -Be 0 
+$true | Should -Be $true 
+@(1, 2, 3) | Should -Be @(1, 2, 3) 
+#bein
+'Harry' | Should -BeIn 'Tom', 'Richard', 'Harry' 
+#belessthan
+1 | Should -BeLessThan 20 
+#belike
+'Value' | Should -BeLike 'v*' 
+#belikeexactly
+'Value' | Should -BeLikeExactly 'V*' 
+#benullorempty
+@() | Should -BeNullOrEmpty 
+'' | Should -BeNullOrEmpty 
+#beoftype
+[IPAddress]"1.2.3.4" | Should -BeOfType [IPAddress] 
+#filecontentmatch sing contain
+'hello world' | Out-File 'file.txt' 
+'file.txt' | Should -Contain 'World' 
+#filecontentmatchexacgtly
+'hello world' | Out-File 'file.txt' 
+'file.txt' | Should -FileContentMatchExactly 'world' 
+#filecontentmatchmultiline
+Set-Content file.txt -Value "1`n2`n3`n4" 
+'file.txt' | Should -FileContentMatchMultiline "2`n3" 
+#exists
+'c:\Windows' | Should -Exist 
+#match reg expression , case insensitive
+'value' | Should Match '^V.+e$' 
+#matchexactly , case sensitve
+'value' | Should Match '^v.+e$' 
+#Throw , does it throw error
+function Invoke-Something { throw } 
+Describe Invoke-Something { 
+    It 'Throws a terminating error' { 
+{ Invoke-Something } | Should Throw 
+    } 
+} 
+#test error message
+function Invoke-Something { throw 'an error' } 
+Describe Invoke-Something { 
+    It 'Throws a terminating error' { 
+{ Invoke-Something } | Should Throw 'an error' 
+    } 
+}
+#not , negate previous term
+function Invoke-Something { return 1} 
+Invoke-Something | Should -Not -Be 0 
+Invoke-Something | Should -Not -BeNullOrEmpty
+#Context , group tests within describe
+#before and after, when to execute test code 
+#eg function to test:
+function Remove-StaleFile { 
+    param ( 
+        [Parameter(Mandatory = $true)] 
+        [String]$Path, 
+        [String]$Filter = '*.*', 
+        [Int32]$MaximumAge = 90 
+    ) 
+ 
+    Get-ChildItem $Path -Filter $Filter | 
+        Where-Object LastWriteTime -lt (Get-Date).AddDays(-$MaximumAge) | 
+        Remove-Item 
+} 
+#before all
+BeforeAll { 
+    $extensions = '.txt', '.log', '.doc' 
+    $Path = 'C:\Temp\StaleFiles' 
+    $null = New-Item $Path -ItemType Directory 
+    Push-Location $Path 
+} 
+#after all
+AfterAll { 
+    Pop-Location 
+    Remove-Item C:\Temp\StaleFiles -Recurse -Force 
+} 
+#before each
+BeforeEach { 
+    foreach ($extension in $extensions) { 
+        $item = New-Item "stale$extension" -ItemType File -Force 
+        $item.LastWriteTime = (Get-Date).AddDays(-92) 
+} 
+foreach ($extension in $extensions) { 
+$item = New-Item "new$extension" -ItemType File -Force 
+$item.LastWriteTime = (Get-Date).AddDays(-88) 
+} 
+} 
+#test itself is now simpler:
+It 'Removes all files older than 90 days' { 
+    Remove-StaleFile $Path 
+    Test-Path "stale.*" | Should -Be $false 
+    Get-ChildItem "new.*" | Should -Not -BeNullOrEmpty 
+} 
+
+$testCases = $extensions | ForEach-Object { @{ Extension = $_ } } 
+It 'Removes all <Extension> files older than 90 days' -TestCases $testCases { 
+    param ( $Extension ) 
+
+    Remove-StaleFile $Path -Filter "*$Extension" 
+    Test-Path "stale$Extension" | Should -Be $false 
+    Get-ChildItem "stale.*" | Should -Not -BeNullOrEmpty 
+    Get-ChildItem "new.*" | Should -Not -BeNullOrEmpty 
+} 
+#testdrive , if doing filesystem tests
+(Get-Item 'TestDrive:\').FullName 
+#mock , override command
+Mock Get-Date { 
+    '01/01/2017' 
+    } 
+#Assert MockCalled
+#eg function
+function Get-OperatingSystemName{ 
+    (Get-CimInstance Win32_OperatingSystem).Caption 
+} 
+#create test with mock:
+Describe Get-OperatingSystemName { 
+    Mock Get-CimInstance { 
+        [PSCustomObject]@{ 
+            Caption = 'OSName' 
+        } 
+    } 
+    It 'Gets the name of the operating system' { 
+        Get-OperatingSystemName | Should -Be 'OSName' 
+        Assert-MockCalled Get-CimInstance 
+    } 
+} 
+#or check how many times the test was called
+Assert-MockCalled Get-CimInstance -Times 0 
+Assert-MockCalled Get-CimInstance -Times 1 -Exactly
+#filer parameters mock to limit scope
+Describe TestPathMocking { 
+    Mock Test-Path { $false } -ParameterFilter { $Path -eq 'C:\' } 
+ 
+    It 'Uses the mock' { 
+        Test-Path 'C:\' | Should -Be $false 
+    } 
+ 
+    It 'Uses the real command' { 
+        Test-Path 'C:\Windows' | Should -Be $true 
+    } 
+} 
+#mock objects
+#eg object
+[PSCustomObject]@{ 
+    Property = "Value" 
+} 
+[PSCustomObject]@{} | Add-Member MethodName -MemberType ScriptMethod -Value { } 
+#use this approach in Mock:
+Mock New-Object { } -ParameterFilter { $TypeName -eq 'System.IO.FileStream' } 
+Mock New-Object { 
+    [PSCustomObject]@{} | 
+        Add-Member WriteLine -MemberType ScriptMethod -Value { } -PassThru | 
+        Add-Member Close -MemberType ScriptMethod -Value { } -PassThru 
+} -ParameterFilter { $TypeName -eq 'System.IO.StreamWriter' } 
+#mock methods
+$sqlConnection = New-Object System.Data.SqlClient.SqlConnection 
+$sqlConnection | Add-Member State -MemberType NoteProperty -Force -Value 'Closed' 
+$sqlConnection | Add-Member Open -MemberType ScriptMethod -Force -Value { 
+    $this.State = 'Open' 
+} 
+#Ignoring CIM objects
+
+#ERROR HANDLING
+
+
 
 
 #Get-ADUser -Filter { sAMAccountName -eq "SomeName" }
