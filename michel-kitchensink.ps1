@@ -1530,7 +1530,122 @@ $sqlConnection | Add-Member Open -MemberType ScriptMethod -Force -Value {
 #Ignoring CIM objects
 
 #ERROR HANDLING
+#Throw error
+function ThrowError {
+    Write-Host 'First'
+    throw 'Error'
+    Write-Host 'Second'
+    throw New-Object ArgumentException('Unsupported value') 
+    throw New-Object Management.Automation.ErrorRecord( 
+    (New-Object InvalidOperationException('Invalid operation')), 
+        'AnErrorID', 
+        [Management.Automation.ErrorCategory]::InvalidOperation, 
+        $null 
+       ) 
+    }
+ThrowError
+# Non terminating error throw
+function WriteError {
+    Write-Host 'First'
+    Write-Error 'Error'
+    Write-Host 'Second'
+    Write-Error -Message 'Message' -Category 'InvalidOperation' -ErrorId 'UniqueID'
 
+    }
+WriteError
+#Error action
+function Invoke-Something { 
+    [CmdletBinding()] 
+    param ( ) 
+ 
+    Write-Error 'Something went wrong' 
+} 
+Invoke-Something -ErrorAction SilentlyContinue 
+Invoke-Something -ErrorAction Stop
+#error records
+100 / 0 
+$record = $Error[0] 
+$record.ScriptStackTrace
+$record.Exception.StackTrace
+#OR set record yourself dynamically
+$numerator = 10 
+$denominator = 0 
+try { 
+    $numerator / $denominator 
+} catch { 
+    $errorRecord = New-Object Management.Automation.ErrorRecord( 
+        (New-Object Exception($_.Exception.Message)), 
+        'InvalidDivision',   # ErrorId 
+'InvalidOperation',  # ErrorCategory 
+        ([PSCustomObject]@{  # TargetObject 
+            Numerator   = $numerator 
+            Denominator = $denominator 
+        }) 
+    ) 
+    Write-Error -ErrorRecord $errorRecord 
+} 
+#test it
+$Error[0].TargetObject
+#clear , recent error
+$Error.Clear()
+$Error[0]
+#catch error
+try { } catch { 'Catches any exception' } 
+try { } catch [ExceptionType] { 'Catch an exception type' } 
+try { } catch [ExceptionType1], [ExceptionType2] { 
+    'Catch exception type 1 and 2' 
+} 
+#OR
+try { 
+    $null.ToString() 
+} catch { 
+    Write-Host 'This exception has been handled' 
+} 
+#In ctahc use $_ to get the error
+try { 
+    $null.ToString() 
+} catch { 
+    Write-Host $_.Exception.Message      # This is the same as... 
+    Write-Host $PSItem.Exception.Message # ... this. 
+} 
+#limit to specific error
+$ErrorActionPreference = 'Stop' 
+try { 
+    # If the file does not exist, this will raise an exception of type ItemNotFoundException 
+    $content = Get-Content C:\doesnotexist.txt 
+} catch [System.Management.Automation.ItemNotFoundException] { 
+    Write-Host 'The item was not found' 
+} 
+#USe finally to have a default handler
+try { 
+    Write-Host "Try" 
+    throw 'Error' 
+} catch { 
+    Write-Host "Catch, after Try" 
+    throw 
+} finally { 
+    Write-Host "Finally, after Catch, before the exception" 
+} 
+#rethrow error
+try { 
+    'Statement1' 
+    throw 'Statement2' 
+    'Statement3' 
+} catch { 
+    throw 
+} 
+#OR terminate after all
+Function Invoke-Something { 
+    [CmdletBinding()] 
+    Param ( ) 
+ try { 
+     'Statement1' 
+     throw 'Statement2' 
+     'Statement3' 
+ } catch { 
+     $pscmdlet.ThrowTerminatingError($_) 
+ } 
+ } 
 
 
 
